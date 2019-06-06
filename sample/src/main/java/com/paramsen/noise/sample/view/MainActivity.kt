@@ -18,7 +18,10 @@ import android.view.animation.AnimationUtils
 import com.paramsen.noise.Noise
 import com.paramsen.noise.sample.R
 import com.paramsen.noise.sample.source.AudioSource
+import com.paramsen.noise.sample.util.SoundUtil
 import io.reactivex.Flowable
+import io.reactivex.Scheduler
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Function
 import io.reactivex.schedulers.Schedulers
@@ -62,23 +65,48 @@ class MainActivity : AppCompatActivity() {
 
         //AudioView
         disposable.add(src.observeOn(Schedulers.newThread())
-                .doOnNext({ p0.next() })
-                .subscribe(audioView::onWindow, { e -> Log.e(TAG, e.message) }))
-        //FFTView
-        disposable.add(src.observeOn(Schedulers.newThread())
-                .doOnNext({ p1.next() })
+                .doOnNext {
+                    p0.next()
+                }
+                .observeOn(AndroidSchedulers.mainThread())
                 .map {
-                    for (i in 0..it.size - 1)
-                        it[i] *= 2.0f
+                    tv_db.text = String.format("%.2f", it.decibelValue);
                     return@map it
                 }
-                .map { noise.fft(it, FloatArray(4096 + 2)) }
-                .doOnNext({ p3.next() })
-                .subscribe({ fft ->
-                    fftHeatMapView.onFFT(fft)
-                    fftBandView.onFFT(fft)
-                }, { e -> Log.e(TAG, e.message) }))
+                .observeOn(Schedulers.newThread())
+                .subscribe({
+                    audioView.onWindow(it.floatArray)
+                }, {
+                    Log.e(TAG, it.message)
+                }))
+        //FFTView
+        disposable.add(src.observeOn(Schedulers.newThread())
+                .doOnNext { p1.next() }
+                .map {
+                    //乘以两倍
+                    for (i in 0 until it.floatArray.size)
+                        it.floatArray[i] *= 2.0f
+                    return@map it
+                }
+                .map {
+                    //FFT计算
+                    noise.fft(it.floatArray, FloatArray(4096 + 2))
+                }
+                .doOnNext { p3.next() }
+                .subscribe({
+                    fftHeatMapView.onFFT(it)
+                    fftBandView.onFFT(it)
+                }, {
+                    Log.e(TAG, it.message)
+                })
+        )
+        //test
+        disposable.add(src.observeOn(Schedulers.newThread()).doOnNext {
+            p2.next()
+        }.subscribe({
+        }, {
 
+        }))
         tip.schedule()
     }
 

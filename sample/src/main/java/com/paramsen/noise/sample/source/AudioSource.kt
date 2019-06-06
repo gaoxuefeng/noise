@@ -3,6 +3,7 @@ package com.paramsen.noise.sample.source
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import com.paramsen.noise.sample.util.SoundUtil
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.schedulers.Schedulers
@@ -18,7 +19,7 @@ const val SAMPLE_SIZE = 4096
  * @author Pär Amsen 06/2017
  */
 class AudioSource() {
-    private val flowable: Flowable<FloatArray>
+    private val flowable: Flowable<SoundData>
 
     /**
      * The returned Flowable publish frames of two sizes; 4096 and 768. Roughly 10fps / 60fps.
@@ -26,7 +27,7 @@ class AudioSource() {
      * Flowables, but AudioRecord makes that utterly complex.
      */
     init {
-        flowable = Flowable.create<FloatArray>({ sub ->
+        flowable = Flowable.create<SoundData>({ sub ->
             val src = MediaRecorder.AudioSource.MIC
             val cfg = AudioFormat.CHANNEL_IN_MONO
             val format = AudioFormat.ENCODING_PCM_16BIT
@@ -53,6 +54,7 @@ class AudioSource() {
                 read += recorder.read(buf, read, buf.size - read)
 
                 if (read == buf.size) {
+                    val decibelValue = SoundUtil.calcDecibelLevel(buf, 512)
                     for (i in 0..buf.size - 1) {
                         out.put(buf[i].toFloat())
                     }
@@ -60,7 +62,7 @@ class AudioSource() {
                     if (!out.hasRemaining()) {
                         val cpy = FloatArray(out.array().size)
                         System.arraycopy(out.array(), 0, cpy, 0, out.array().size)
-                        sub.onNext(cpy)
+                        sub.onNext(SoundData(decibelValue, cpy))
                         out.clear()
                     }
 
@@ -78,7 +80,7 @@ class AudioSource() {
      * All subscribers must unsubscribe in order for Flowable to cancel the microphone stream. The
      * stream is started automatically when subscribed to, the same mic stream is used for all subs.
      */
-    fun stream(): Flowable<FloatArray> {
+    fun stream(): Flowable<SoundData> {
         return flowable
     }
 }

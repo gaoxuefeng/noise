@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.util.AttributeSet
+import android.util.Log
 import java.util.*
 
 /**
@@ -58,6 +59,7 @@ class AudioView(context: Context, attrs: AttributeSet?) : SimpleSurface(context,
                     accum += sample
                 } else {
                     audio.addFirst(accum / merge)
+                    Log.i("分贝", "" + accum / merge)
                     accum = 0f
                 }
             }

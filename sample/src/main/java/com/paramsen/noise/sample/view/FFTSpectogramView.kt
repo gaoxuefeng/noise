@@ -146,7 +146,9 @@ class FFTSpectogramView(context: Context, attrs: AttributeSet?) : SimpleSurface(
             avg /= resolution
 
             for (i in 0..resolution - 1) {
-                if (bands[i] < avg / 2) bands[i] * 1000f
+                if (bands[i] < avg / 2) {
+                    bands[i] * 1000f
+                }
             }
 
             synchronized(ffts) {
